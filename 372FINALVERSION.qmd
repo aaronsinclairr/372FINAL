@@ -1,0 +1,109 @@
+---
+title: "372FINALQMD"
+format: html
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
+
+You can add options to executable code like this
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
+
+```{r}
+
+library(tidyverse)
+library(tidycensus)
+library(sf)
+```
+
+```{r}
+climatedata = read_csv("Climate_Equity_Index_SD.csv")
+head(climatedata)
+
+```
+
+```{r}
+
+healthdata = read_csv("Health_Places_Index_3_0.csv")
+head(healthdata)
+
+```
+
+```{r}
+#Here I am converting the census tract data from my climate equity dataset into a string
+
+climatedata = climatedata |>
+  mutate(census_tra = as.character(census_tra))
+
+```
+
+```{r}
+#Here I am cleaning the census tract data from my health dataset by concatinating it with the substring method and having it start at the second character thereby negating the aditional zero that was placed on each census tract in this data set for some reason
+
+healthdata = healthdata |>
+  mutate(geoid = substr(geoid, 2, nchar(geoid)))
+
+```
+
+```{r}
+#Here I am merging my data sets using the inner join method and creating a new data set with each census tract and its corresponding health and climate data. 
+
+selected_data = inner_join(healthdata, climatedata, by = c("geoid" = "census_tra")) |>
+  select(census_tract = geoid, health_value = hpi, climate_value = cei_score)
+```
+
+```{r}
+#Here I am graphing my new data set. Given it looked incredibly rudimentary and hard to read/comprehend just doing a raw graphing like we did in class I felt it appropriate to add enhancements that account for scale and aesthetics (line wdiths's, colors, etc...) with the help of CGPT. I have added enhancements that are more complictated that the scope of the class before and felt it appropriate here as well as I felt the priority is on making my report as clear and readable as possible - which is something that this aditional focus achieves. 
+
+ggplot(selected_data, aes(x = climate_value, y = health_value)) + 
+  geom_point(color = "blue", alpha = 0.6, size = 3) +  
+  geom_smooth(method = "lm", color = "red", se = FALSE, linetype = "dashed") + line
+  labs( title = "Relationship Between Climate and Health Values",
+    x = "Climate Value",
+    y = "Health Value") + 
+  scale_x_continuous(
+    name = "Climate Value",
+    breaks = seq(min(selected_data$climate_value, na.rm = TRUE), 
+                 max(selected_data$climate_value, na.rm = TRUE), by = 2),  
+    limits = c(quantile(selected_data$climate_value, 0.05, na.rm = TRUE), 
+               quantile(selected_data$climate_value, 0.95, na.rm = TRUE))  
+  ) + 
+ 
+   scale_y_continuous(
+    name = "Health Value",
+    breaks = seq(min(selected_data$health_value, na.rm = TRUE), 
+                 max(selected_data$health_value, na.rm = TRUE), by = 0.2), 
+    limits = c(quantile(selected_data$health_value, 0.05, na.rm = TRUE), 
+               quantile(selected_data$health_value, 0.95, na.rm = TRUE))  
+  ) + 
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),  
+    axis.title = element_text(size = 12), 
+    axis.text = element_text(size = 10) 
+  )
+```
+
+```{r}
+#Here I am running my regression 
+model = lm(health_value ~ climate_value, data = selected_data)
+
+summary(model)
+  
+```
